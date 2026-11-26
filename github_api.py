@@ -1,5 +1,6 @@
 import requests
 from auth_manager import get_token
+from config import GITHUB_API_TIMEOUT
 
 
 def _get_header() -> dict[str, str]:
@@ -24,7 +25,7 @@ def _github_request(
             headers=_get_header(),
             params=params,
             json=json_body,
-            timeout=15,
+            timeout=GITHUB_API_TIMEOUT,
         )
 
     except requests.Timeout:
@@ -70,20 +71,28 @@ def _github_get(
     return _github_request("GET", url, params=params)
 
 
-def get_open_issues(owner: str, repo: str) -> list[dict]:
-    """Fetch open issues from a GitHub repository."""
+def get_open_issues(owner: str, repo: str, max_pages: int = 10) -> dict:
+    """Fetch open issues from a GitHub repository (paginated, excluding pull requests)."""
 
     url = f"https://api.github.com/repos/{owner}/{repo}/issues"
+    all_items: list[dict] = []
+    truncated = False
 
-    params = {
-        "state": "open",
-        "per_page": 100,
-    }
+    for page in range(1, max_pages + 1):
+        params = {
+            "state": "open",
+            "per_page": 100,
+            "page": page,
+        }
+        batch, error = _github_get(url, params=params)
+        if error:
+            return {"error": error}
 
-    issues, error = _github_get(url, params=params)
-
-    if error:
-        return {"error": error}
+        all_items.extend(batch)
+        if len(batch) < 100:
+            break
+    else:
+        truncated = True
 
     # GitHub's issues endpoint also returns pull requests.
     # We only want actual issues.
@@ -95,7 +104,7 @@ def get_open_issues(owner: str, repo: str) -> list[dict]:
             "state": issue["state"],
             "labels": [label["name"] for label in issue["labels"]],
         }
-        for issue in issues
+        for issue in all_items
         if "pull_request" not in issue
     ]
 
@@ -104,6 +113,8 @@ def get_open_issues(owner: str, repo: str) -> list[dict]:
         "total_returned": len(formatted),
         "issues": formatted,
     }
+    if truncated:
+        result["truncated"] = True
 
     if not formatted:
         result["message"] = "This repository has no open issues."

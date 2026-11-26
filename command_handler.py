@@ -33,6 +33,8 @@ def start_new_session():
 
 async def handle_command(user_input, graph, app_state):
     command = user_input.strip()
+    if not command:
+        return False
     command_lower = command.lower()
 
     # HELP
@@ -267,6 +269,7 @@ Available commands:
                 )
         else:
             print_system_message("No stored GitHub credentials found.")
+        return True
 
     # Not a command handled here
     return False

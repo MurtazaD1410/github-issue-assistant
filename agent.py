@@ -19,8 +19,11 @@ from ui import (
 from auth_manager import get_token, verify_token
 
 from prompt_toolkit import PromptSession
+from prompt_toolkit.application import get_app
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.auto_suggest import AutoSuggest, Suggestion
+from prompt_toolkit.filters import Condition
+from prompt_toolkit.key_binding import KeyBindings
 
 from langchain_core.messages import AIMessage, SystemMessage
 from langgraph.graph.message import RemoveMessage
@@ -115,16 +118,30 @@ async def main():
         username = verify_token(token) if token else None
         await show_startup_animation(OLLAMA_MODEL, len(tools), username)
 
+        kb = KeyBindings()
+
+        @kb.add(
+            "enter",
+            filter=Condition(lambda: not get_app().current_buffer.text.strip()),
+        )
+        def _(event):
+            # Ignore Enter on empty input so it doesn't print another prompt line
+            pass
+
         session = PromptSession(
             completer=command_completer,
             auto_suggest=CommandAutoSuggest(),
             complete_while_typing=True,
+            key_bindings=kb,
             style=STYLE,
         )
 
         # 8. looping for chat like feel
         while True:
             user_input = (await session.prompt_async(print_user_prompt())).strip()
+
+            if not user_input:
+                continue
 
             if user_input.lower() == "/exit":
                 print_goodbye()

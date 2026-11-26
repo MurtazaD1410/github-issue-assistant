@@ -111,3 +111,28 @@ def test_write_tool_cancelled_when_rejected(monkeypatch):
     resumed = asyncio.run(graph.ainvoke(Command(resume=False), config=config))
     assert executed_writes == []
     assert "cancelled" in resumed["messages"][-1].content.lower()
+
+
+def test_mixed_read_and_write_rejection_still_executes_read(monkeypatch):
+    graph, executed_writes = _build_test_graph(
+        monkeypatch,
+        [
+            AIMessage(
+                content="",
+                tool_calls=[
+                    {"id": "call_r1", "name": "get_issues", "args": {"owner": "o", "repo": "r"}},
+                    {"id": "call_w3", "name": "create_issue", "args": {"owner": "o", "repo": "r", "title": "Bug"}},
+                ],
+            ),
+            AIMessage(content="Read completed, write cancelled."),
+        ],
+    )
+    config = {"configurable": {"thread_id": "mixed-reject"}}
+    first = asyncio.run(graph.ainvoke({"messages": [HumanMessage(content="read and write")]}, config=config))
+    assert "__interrupt__" in first
+
+    resumed = asyncio.run(graph.ainvoke(Command(resume=False), config=config))
+    assert executed_writes == []
+    tool_msgs = [m for m in resumed["messages"] if m.type == "tool"]
+    assert any(m.name == "get_issues" and "issues for o/r" in m.content for m in tool_msgs)
+    assert any(m.name == "create_issue" and "Action cancelled" in m.content for m in tool_msgs)

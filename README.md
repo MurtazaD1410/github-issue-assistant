@@ -35,12 +35,12 @@ flowchart LR
 ## Features
 
 - **10 GitHub MCP Tools**
-  - *Read-only:* `get_issues`, `list_repos`, `get_issue_details`, `get_issue_comments`, `get_repository`, `search_issues`, `list_pull_requests`
-  - *Write (approval-gated):* `create_issue`, `add_issue_comment`, `update_issue`
-- **Human-in-the-Loop Approval:** Write tools pause via LangGraph `interrupt()` and require explicit `y/n` confirmation before execution (`Command(resume=...)`).
+  - *Read-only:* `get_issues` (paginated up to 1,000 open items, excluding PRs), `list_repos`, `get_issue_details`, `get_issue_comments`, `get_repository`, `search_issues`, `list_pull_requests`
+  - *Write (approval-gated in the agent):* `create_issue`, `add_issue_comment`, `update_issue`
+- **Human-in-the-Loop Approval:** Write tools pause via LangGraph `interrupt()` in `graph_builder.py` and require explicit `y/n` confirmation before execution (`Command(resume=...)`).
 - **Context Compaction (`/compact`):** Summarises older turns while preserving system instructions, tool-call boundaries, and recent turns.
 - **Persistent Sessions:** Separate SQLite databases for LangGraph checkpoints (`checkpoints.sqlite`) and session metadata (`sessions.sqlite`), with auto-generated titles.
-- **Secure Authentication (`/login`, `/logout`):** Stores GitHub Personal Access Tokens in **macOS Keychain** via `/usr/bin/security` — never printed or stored in Git.
+- **Secure Authentication (`/login`, `/logout`):** Stores GitHub Personal Access Tokens in **macOS Keychain** via `/usr/bin/security` — never printed or stored in Git. Falls back to the `GITHUB_TOKEN` environment variable for `server.py` on non-macOS systems.
 - **Interactive Terminal UX:** Inline command autocomplete, `Esc`-to-cancel in-flight requests, live tool-usage indicators, and Rich Markdown rendering.
 
 ---
@@ -48,7 +48,8 @@ flowchart LR
 ## Setup
 
 ### Prerequisites
-- macOS with Python 3.12+
+- **macOS** (for the terminal assistant, which uses macOS Keychain and Unix `termios`/`tty` APIs) with Python 3.12+
+  - *Note:* The standalone MCP server (`server.py`) can also run on Linux/other platforms using the `GITHUB_TOKEN` environment variable.
 - [Ollama](https://ollama.com/) running locally with `qwen3:8b`:
   ```bash
   ollama pull qwen3:8b
@@ -74,6 +75,8 @@ python agent.py
 | `KEEP_RECENT_TURNS` | `2` | Recent turns preserved by `/compact` |
 | `CHECKPOINTS_DB_PATH` | `./checkpoints.sqlite` | LangGraph checkpoint database path |
 | `SESSIONS_DB_PATH` | `./sessions.sqlite` | Session metadata database path |
+| `GITHUB_API_TIMEOUT` | `15` | Timeout (seconds) for GitHub API requests |
+| `GITHUB_TOKEN` | *(unset)* | Optional fallback GitHub token when macOS Keychain is unavailable |
 
 ---
 
@@ -99,6 +102,7 @@ python agent.py
 ## Using the MCP Server in Other Clients (Interoperability)
 
 `server.py` has zero dependencies on LangGraph or Ollama and communicates over `stdio`.
+Note that the Human-in-the-Loop approval gate lives in the LangGraph agent (`graph_builder.py`), so external MCP clients (such as Claude Desktop or VS Code) rely on their own built-in tool confirmation prompts rather than receiving an approval gate from `server.py`. On non-macOS hosts, set `GITHUB_TOKEN` in the server's `env` block.
 
 ### Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_config.json`)
 ```json

@@ -36,6 +36,7 @@ async def build_graph(checkpointer):
     llm = ChatOllama(model=OLLAMA_MODEL, temperature=OLLAMA_TEMPERATURE)
 
     model = llm.bind_tools(tools)
+    tools_by_name = {t.name: t for t in tools}
 
     # 4. Define the model node
     async def call_model(state: MessagesState):
@@ -72,20 +73,35 @@ async def build_graph(checkpointer):
         if approved:
             return Command(goto="tools")
 
-        rejection_messages = [
-            ToolMessage(
-                tool_call_id=tc["id"],
-                name=tc["name"],
-                content=(
-                    "Action cancelled: the user chose 'no' at the confirmation prompt. "
-                    "Briefly confirm that the action was cancelled as requested. "
-                    "Do not mention authentication or /login."
-                ),
-            )
-            for tc in tool_calls
-        ]
+        result_messages = []
+        for tc in tool_calls:
+            if tc["name"] in WRITE_TOOLS:
+                result_messages.append(
+                    ToolMessage(
+                        tool_call_id=tc["id"],
+                        name=tc["name"],
+                        content=(
+                            "Action cancelled: the user chose 'no' at the confirmation prompt. "
+                            "Briefly confirm that the action was cancelled as requested. "
+                            "Do not mention authentication or /login."
+                        ),
+                    )
+                )
+            else:
+                tool_obj = tools_by_name.get(tc["name"])
+                try:
+                    output = await tool_obj.ainvoke(tc["args"]) if tool_obj else f"Unknown tool: {tc['name']}"
+                except Exception as e:
+                    output = f"Tool error: {e}"
+                result_messages.append(
+                    ToolMessage(
+                        tool_call_id=tc["id"],
+                        name=tc["name"],
+                        content=str(output),
+                    )
+                )
 
-        return Command(update={"messages": rejection_messages}, goto="call_model")
+        return Command(update={"messages": result_messages}, goto="call_model")
 
     # 5. Build the LangGraph workflow
     builder = StateGraph(MessagesState)

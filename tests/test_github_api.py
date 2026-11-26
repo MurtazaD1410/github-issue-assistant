@@ -97,3 +97,50 @@ def test_search_issues_appends_is_issue(monkeypatch):
 
     result = github_api.search_issues("repo:octocat/Hello-World bug")
     assert result["query"] == "repo:octocat/Hello-World bug is:issue"
+
+
+def test_get_open_issues_paginates(monkeypatch):
+    monkeypatch.setattr(github_api, "get_token", lambda: None)
+    page1 = [
+        {
+            "number": i,
+            "title": f"Issue {i}",
+            "html_url": f"https://example.com/{i}",
+            "state": "open",
+            "labels": [],
+        }
+        for i in range(1, 101)
+    ]
+    page2 = [
+        {
+            "number": 101,
+            "title": "Issue 101",
+            "html_url": "https://example.com/101",
+            "state": "open",
+            "labels": [],
+        }
+    ]
+    calls = []
+
+    def fake_request(method, url, headers=None, params=None, json=None, timeout=None):
+        calls.append(params["page"])
+        return _mock_response(200, page1 if params["page"] == 1 else page2)
+
+    monkeypatch.setattr(requests, "request", fake_request)
+    result = github_api.get_open_issues("octocat", "Hello-World")
+    assert calls == [1, 2]
+    assert result["total_returned"] == 101
+
+
+def test_auth_manager_env_fallback_on_non_macos(monkeypatch):
+    import subprocess
+    import auth_manager
+
+    def raise_not_found(*a, **kw):
+        raise FileNotFoundError("security not found")
+
+    monkeypatch.setattr(subprocess, "run", raise_not_found)
+    monkeypatch.setenv("GITHUB_TOKEN", "ghp_env_test_123")
+    assert auth_manager.get_token() == "ghp_env_test_123"
+    assert auth_manager.save_token("x") is False
+    assert auth_manager.delete_token() is False
