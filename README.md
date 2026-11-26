@@ -8,6 +8,12 @@ The project consists of two independently usable components:
 
 ---
 
+## Demo
+
+![GitHub Issue Assistant Demo](assets/demo.gif)
+
+---
+
 ## Architecture
 
 ```mermaid
@@ -99,9 +105,9 @@ python agent.py
 {
   "mcpServers": {
     "github-issue-assistant": {
-      "command": "/Users/murtazadhariwala/Desktop/Development/ai/github-issue-assistant/.venv/bin/python",
+      "command": "/path/to/github-issue-assistant/.venv/bin/python",
       "args": [
-        "/Users/murtazadhariwala/Desktop/Development/ai/github-issue-assistant/server.py"
+        "/path/to/github-issue-assistant/server.py"
       ]
     }
   }
@@ -114,9 +120,9 @@ python agent.py
   "servers": {
     "github-issue-assistant": {
       "type": "stdio",
-      "command": "/Users/murtazadhariwala/Desktop/Development/ai/github-issue-assistant/.venv/bin/python",
+      "command": "/path/to/github-issue-assistant/.venv/bin/python",
       "args": [
-        "/Users/murtazadhariwala/Desktop/Development/ai/github-issue-assistant/server.py"
+        "/path/to/github-issue-assistant/server.py"
       ]
     }
   }

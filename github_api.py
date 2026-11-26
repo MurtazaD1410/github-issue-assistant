@@ -245,9 +245,6 @@ def search_issues(query: str, limit: int = 20) -> dict:
         "per_page": min(max(limit, 1), 100),
     }
 
-    response = requests.get(url, headers=_get_header(), params=params, timeout=15)
-    response.raise_for_status()
-
     data, error = _github_get(url, params=params)
     if error:
         return {"error": error}

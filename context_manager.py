@@ -78,7 +78,7 @@ Conversation transcript:
         response = await llm.ainvoke(prompt)
         summary = str(response.content).strip()
     except Exception as e:
-        return False, "Summarisation failed: {e}"
+        return False, f"Summarisation failed: {e}"
 
     if not summary:
         return False, "Summarisation returned an empty summary; history unchanged."
