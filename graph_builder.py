@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 from typing import Literal
 
-from config import MCP_SERVER_PATH, OLLAMA_MODEL, OLLAMA_TEMPERATURE
+from config import MCP_SERVER_PATH, OLLAMA_MODEL, OLLAMA_TEMPERATURE, BASE_DIR
 
 from langchain_core.messages import ToolMessage
 from langchain_mcp_adapters.client import MultiServerMCPClient
@@ -11,8 +11,6 @@ from langchain_ollama import ChatOllama
 from langgraph.graph import StateGraph, MessagesState, START, END
 from langgraph.prebuilt import tools_condition, ToolNode
 from langgraph.types import Command, interrupt
-
-BASE_DIR = Path(__file__).resolve().parent
 
 WRITE_TOOLS = {"create_issue", "add_issue_comment", "update_issue"}
 
@@ -90,7 +88,11 @@ async def build_graph(checkpointer):
             else:
                 tool_obj = tools_by_name.get(tc["name"])
                 try:
-                    output = await tool_obj.ainvoke(tc["args"]) if tool_obj else f"Unknown tool: {tc['name']}"
+                    output = (
+                        await tool_obj.ainvoke(tc["args"])
+                        if tool_obj
+                        else f"Unknown tool: {tc['name']}"
+                    )
                 except Exception as e:
                     output = f"Tool error: {e}"
                 result_messages.append(

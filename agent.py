@@ -1,6 +1,6 @@
 import asyncio
 from pathlib import Path
-from config import CHECKPOINTS_DB_PATH, OLLAMA_MODEL
+from config import CHECKPOINTS_DB_PATH, OLLAMA_MODEL, BASE_DIR
 
 from ui import (
     print_assistant_message,
@@ -40,8 +40,6 @@ from session_manager import (
     get_session,
     create_session,
 )
-
-BASE_DIR = Path(__file__).resolve().parent
 
 commands = [
     "/help",

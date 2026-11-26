@@ -1,9 +1,8 @@
 import sqlite3
 from pathlib import Path
 from datetime import datetime, timezone
-from config import SESSIONS_DB_PATH
+from config import SESSIONS_DB_PATH, BASE_DIR
 
-BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = SESSIONS_DB_PATH
 
 
